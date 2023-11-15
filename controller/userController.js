@@ -1,6 +1,7 @@
 const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
+const validateMongoDBId = require("../utils/validateMongoDBID");
 
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -35,6 +36,7 @@ const loginController = asyncHandler(async (req, res) => {
 const updateUser = asyncHandler(async (req, res) => {
   try {
     const { _id } = req.user;
+    validateMongoDBId(_id);
     const updatedUser = await User.findByIdAndUpdate(
       _id,
       {
@@ -67,6 +69,7 @@ const getAllUser = asyncHandler(async (req, res) => {
 const getUser = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
+    validateMongoDBId(id);
     const user = await User.findById(id);
     res.json(user);
   } catch (error) {
@@ -78,6 +81,7 @@ const getUser = asyncHandler(async (req, res) => {
 const deleteUser = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
+    validateMongoDBId(id);
     const user = await User.findByIdAndDelete(id);
     res.json(user);
   } catch (error) {
@@ -89,16 +93,16 @@ const deleteUser = asyncHandler(async (req, res) => {
 const blockUser = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-
-    const block = await User.findByIdAndUpdate(
+    validateMongoDBId(id);
+    await User.findByIdAndUpdate(
       id,
       { isBlocked: true },
       { new: true }
     );
 
     res.json({
-      message: "User Blocked"
-    })
+      message: "User Blocked",
+    });
   } catch (error) {
     throw new Error(error);
   }
@@ -108,15 +112,16 @@ const blockUser = asyncHandler(async (req, res) => {
 const unBlockUser = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const unblock = await User.findByIdAndUpdate(
+    validateMongoDBId(id);
+    await User.findByIdAndUpdate(
       id,
       { isBlocked: false },
       { new: true }
     );
 
     res.json({
-      message: "User Unblocked"
-    })
+      message: "User Unblocked",
+    });
   } catch (error) {
     throw new Error(error);
   }
