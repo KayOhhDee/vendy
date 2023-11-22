@@ -17,7 +17,7 @@ const createProduct = asyncHandler(async (req, res) => {
 
 const updateProduct = asyncHandler(async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
     if (req.body.title) {
       req.body.slug = slugify(req.body.title);
@@ -52,9 +52,20 @@ const getProducts = asyncHandler(async (req, res) => {
   }
 });
 
+const deleteProduct = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params
+    const product = await Product.findByIdAndDelete(id)
+    res.json(product)
+  } catch (error) {
+    throw new Error(error);
+  }
+})
+
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
+  deleteProduct
 };
