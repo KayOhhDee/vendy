@@ -3,10 +3,10 @@ const { createProduct, getProduct, getProducts, updateProduct, deleteProduct } =
 const { authMiddleware, isAdmin } = require('../middlewares/authMiddleware')
 const router = express.Router()
 
-router.post("/", isAdmin, authMiddleware, createProduct)
-router.put("/:id", isAdmin, authMiddleware, updateProduct)
+router.post("/", authMiddleware, isAdmin, createProduct)
+router.put("/:id", authMiddleware, isAdmin, updateProduct)
 router.get("/:id", getProduct)
 router.get("/", getProducts)
-router.delete("/:id", isAdmin, authMiddleware, deleteProduct)
+router.delete("/:id", authMiddleware, isAdmin, deleteProduct)
 
 module.exports = router
