@@ -51,15 +51,38 @@ const getProducts = asyncHandler(async (req, res) => {
     excludeFields.forEach((item) => delete query[item]);
 
     let queryString = JSON.stringify(query);
-    queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`)
-    let queryPromise = Product.find(JSON.parse(queryString))
+    queryString = queryString.replace(
+      /\b(gte|gt|lte|lt)\b/g,
+      (match) => `$${match}`
+    );
+    let queryPromise = Product.find(JSON.parse(queryString));
 
     // Sorting
     if (req.query.sort) {
-      const sortBy = req.query.sort.split(",").join(" ")
-      queryPromise = queryPromise.sort(sortBy)
+      const sortBy = req.query.sort.split(",").join(" ");
+      queryPromise = queryPromise.sort(sortBy);
     } else {
-      queryPromise = queryPromise.sort("-createdAt")
+      queryPromise = queryPromise.sort("-createdAt");
+    }
+
+    // limiting the fields
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      queryPromise = queryPromise.select(fields);
+    } else {
+      queryPromise = queryPromise.select("-__v");
+    }
+
+    // pagination
+    const page = req.query.page;
+    const limit = req.query.limit;
+    const skip = (page - 1) * limit;
+    queryPromise = queryPromise.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      const productsCount = await Product.countDocuments();
+
+      if (skip >= productsCount) throw new Error("This page does not exist");
     }
 
     const products = await queryPromise;
