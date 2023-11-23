@@ -27,7 +27,7 @@ const updateProduct = asyncHandler(async (req, res) => {
       new: true,
     });
 
-    res.json(product)
+    res.json(product);
   } catch (error) {
     throw new Error(error);
   }
@@ -45,7 +45,14 @@ const getProduct = asyncHandler(async (req, res) => {
 
 const getProducts = asyncHandler(async (req, res) => {
   try {
-    const products = await Product.find();
+    const query = { ...req.query };
+    const excludeFields = ["page", "sort", "limit", "fields"];
+    excludeFields.forEach((item) => delete query[item]);
+
+    let queryString = JSON.stringify(query);
+    queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`)
+
+    const products = await Product.find(JSON.parse(queryString));
     res.json(products);
   } catch (error) {
     throw new Error(error);
@@ -54,18 +61,18 @@ const getProducts = asyncHandler(async (req, res) => {
 
 const deleteProduct = asyncHandler(async (req, res) => {
   try {
-    const { id } = req.params
-    const product = await Product.findByIdAndDelete(id)
-    res.json(product)
+    const { id } = req.params;
+    const product = await Product.findByIdAndDelete(id);
+    res.json(product);
   } catch (error) {
     throw new Error(error);
   }
-})
+});
 
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
-  deleteProduct
+  deleteProduct,
 };
