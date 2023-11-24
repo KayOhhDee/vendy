@@ -1,9 +1,11 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDBId = require("../utils/validateMongoDBID");
 const { generateRefreshToken } = require("../config/refreshToken");
+const sendEmail = require("./emailController");
 
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -184,6 +186,62 @@ const unBlockUser = asyncHandler(async (req, res) => {
   }
 });
 
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { password } = req.body;
+  validateMongoDBId(_id);
+  const user = await User.findById(_id);
+
+  if (password) {
+    user.password = password;
+    const updatedPassword = await user.save();
+    res.json(updatedPassword);
+  } else {
+    res.json(user);
+  }
+});
+
+const forgotPasswordToken = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) throw new Error("User with this email not found");
+
+  try {
+    const resetToken = await user.createPasswordResetToken();
+    await user.save();
+    const resetURL = `Hi, Please follow this link to reset your password. This <a href='http://localhost:5000/api/user/reset-password/${resetToken}'>link</a> is valid for 10 minutes.`;
+    const data = {
+      to: email,
+      subject: "Forgot Password Link",
+      text: "Hey User",
+      html: resetURL,
+    };
+    sendEmail(data);
+    res.json(resetToken);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  if (!user) throw new Error("Token Expired. Please try again");
+
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  res.json(user);
+});
+
 module.exports = {
   createUser,
   login,
@@ -195,4 +253,7 @@ module.exports = {
   unBlockUser,
   handleRefreshToken,
   logout,
+  updatePassword,
+  forgotPasswordToken,
+  resetPassword,
 };
