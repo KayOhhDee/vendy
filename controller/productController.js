@@ -138,6 +138,50 @@ const addToWishlist = asyncHandler(async (req, res) => {
   }
 });
 
+const rate = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { star, productId } = req.body;
+  const product = await Product.findById(productId);
+  try {
+    let hasAlreadyRated = product.ratings.find(
+      (userId) => userId.postedBy.toString() === _id.toString()
+    );
+
+    if (hasAlreadyRated) {
+      await Product.updateOne(
+        {
+          ratings: { $elemMatch: hasAlreadyRated },
+        },
+        { $set: { "ratings.$.star": star } },
+        { new: true }
+      );
+    } else {
+      await Product.findByIdAndUpdate(
+        productId,
+        {
+          $push: { ratings: { star, postedBy: _id } },
+        },
+        { new: true }
+      );
+    }
+
+    const allRatings = await Product.findById(productId);
+    let ratingLen = allRatings.ratings.length;
+    let ratingSum = allRatings.ratings
+      .map((i) => i.star)
+      .reduce((prev, curr) => prev + curr, 0);
+    let totalRating = Math.round(ratingSum / ratingLen);
+    let ratedProduct = await Product.findByIdAndUpdate(
+      productId,
+      { totalRating },
+      { new: true }
+    );
+    res.json(ratedProduct);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createProduct,
   getProduct,
@@ -145,4 +189,5 @@ module.exports = {
   updateProduct,
   deleteProduct,
   addToWishlist,
+  rate,
 };
