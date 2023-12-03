@@ -140,7 +140,7 @@ const addToWishlist = asyncHandler(async (req, res) => {
 
 const rate = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { star, productId } = req.body;
+  const { star, productId, comment } = req.body;
   const product = await Product.findById(productId);
   try {
     let hasAlreadyRated = product.ratings.find(
@@ -152,14 +152,14 @@ const rate = asyncHandler(async (req, res) => {
         {
           ratings: { $elemMatch: hasAlreadyRated },
         },
-        { $set: { "ratings.$.star": star } },
+        { $set: { "ratings.$.star": star, "ratings.$.comment": comment } },
         { new: true }
       );
     } else {
       await Product.findByIdAndUpdate(
         productId,
         {
-          $push: { ratings: { star, postedBy: _id } },
+          $push: { ratings: { star, comment, postedBy: _id } },
         },
         { new: true }
       );
