@@ -38,10 +38,7 @@ var blogSchema = new mongoose.Schema({
       ref: "User"
     }
   ],
-  image: {
-    type: String,
-    default: "https://img.freepik.com/free-photo/blog-notes-concept-with-wooden-blocks-pen-black-notebook-top-view_176474-10347.jpg?w=2000&t=st=1700827549~exp=1700828149~hmac=b5716c5cc8a523be4b86d853694db3c51f6042fe6551eef834fbdc825bd88f93"
-  },
+  images: [],
   author: {
     type: String,
     default: "Admin"
