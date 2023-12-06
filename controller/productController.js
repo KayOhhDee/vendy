@@ -3,7 +3,10 @@ const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 const validateMongoDBId = require("../utils/validateMongoDBID");
-const cloudinaryImageUpload = require("../utils/cloudinary");
+const {
+  cloudinaryUploadImage,
+  cloudinaryDeleteImage,
+} = require("../utils/cloudinary");
 const fs = require("fs");
 
 const createProduct = asyncHandler(async (req, res) => {
@@ -189,9 +192,7 @@ const rate = asyncHandler(async (req, res) => {
 
 const uploadImages = asyncHandler(async (req, res) => {
   try {
-    const { id } = req.params;
-    validateMongoDBId(id);
-    const uploader = (path) => cloudinaryImageUpload(path, "images");
+    const uploader = (path) => cloudinaryUploadImage(path, "images");
     const urls = [];
     const files = req.files;
     for (const file of files) {
@@ -200,14 +201,18 @@ const uploadImages = asyncHandler(async (req, res) => {
       urls.push(newpath);
       fs.unlinkSync(path);
     }
-    const product = await Product.findByIdAndUpdate(
-      id,
-      {
-        images: urls.map((file) => file),
-      },
-      { new: true }
-    );
-    res.json(product);
+    const images = urls.map((file) => file);
+    res.json(images);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const deleteImages = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params
+    await cloudinaryDeleteImage(id, "images");
+    res.json({ message: "Deleted" })
   } catch (error) {
     throw new Error(error);
   }
@@ -222,4 +227,5 @@ module.exports = {
   addToWishlist,
   rate,
   uploadImages,
+  deleteImages
 };
