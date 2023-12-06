@@ -14,6 +14,7 @@ const blogCategoryRouter = require("./routes/blogCategoryRoute");
 const brandRouter = require("./routes/brandRoute");
 const couponRouter = require("./routes/couponRoute");
 const colorRouter = require("./routes/colorRoute");
+const enquiryRouter = require("./routes/enquiryRoute");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 dbConnect();
 
@@ -30,6 +31,7 @@ app.use("/api/blog-category", blogCategoryRouter);
 app.use("/api/brand", brandRouter);
 app.use("/api/coupon", couponRouter);
 app.use("/api/color", colorRouter);
+app.use("/api/enquiry", enquiryRouter);
 
 app.use(notFound);
 app.use(errorHandler);
