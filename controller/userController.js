@@ -42,6 +42,33 @@ const login = asyncHandler(async (req, res) => {
   }
 });
 
+// admin login
+const loginAdmin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const admin = await User.findOne({ email });
+
+  if (admin.role !== "admin") throw new Error("Not Authorized");
+
+  if (admin && (await admin.isPasswordMatched(password))) {
+    const refreshToken = await generateRefreshToken(admin?._id);
+    await User.findByIdAndUpdate(admin.id, { refreshToken }, { new: true });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.json({
+      _id: admin?._id,
+      firstname: admin?.firstname,
+      lastname: admin?.lastname,
+      email: admin?.email,
+      mobile: admin?.mobile,
+      token: generateToken(admin?._id),
+    });
+  } else {
+    throw new Error("Invalid Credentials");
+  }
+});
+
 // handle refresh token
 const handleRefreshToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
@@ -242,6 +269,32 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
+const getWishlist = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  validateMongoDBId(_id);
+  try {
+    const user = await User.findById(_id).populate("wishlist");
+    res.json(user);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const saveAddress = asyncHandler(async (req, res, next) => {
+  const { _id } = req.user;
+  validateMongoDBId(_id);
+  try {
+    const user = await User.findByIdAndUpdate(
+      _id,
+      { address: req?.body?.address },
+      { new: true }
+    );
+    res.json(user);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   login,
@@ -256,4 +309,7 @@ module.exports = {
   updatePassword,
   forgotPasswordToken,
   resetPassword,
+  loginAdmin,
+  getWishlist,
+  saveAddress
 };
