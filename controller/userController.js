@@ -2,6 +2,8 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
+const Product = require("../models/productModel");
+const Cart = require("../models/cartModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDBId = require("../utils/validateMongoDBID");
 const { generateRefreshToken } = require("../config/refreshToken");
@@ -295,6 +297,68 @@ const saveAddress = asyncHandler(async (req, res, next) => {
   }
 });
 
+const cart = asyncHandler(async (req, res) => {
+  try {
+    const { cart } = req.body;
+    const { _id } = req.user;
+    validateMongoDBId(_id);
+    let products = [];
+    const user = await User.findById(_id);
+    const cartAlreadyExist = await Cart.findOne({ orderBy: user._id });
+
+    if (cartAlreadyExist) {
+      cartAlreadyExist.remove();
+    }
+
+    for (let i = 0; i < cart.length; i++) {
+      let obj = {};
+      obj.product = cart[i]._id;
+      obj.count = cart[i].count;
+      obj.color = cart[i].color;
+      let getPrice = await Product.findById(cart[i]._id).select("price").exec();
+      obj.price = getPrice.price;
+      products.push(obj);
+    }
+    let cartTotal = products.reduce(
+      (total, curr) => total + curr.price * curr.count,
+      0
+    );
+    let newCart = await new Cart({
+      products,
+      cartTotal,
+      orderBy: user?._id,
+    }).save();
+    res.json(newCart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const getCart = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.user;
+    validateMongoDBId(_id);
+    const cart = await Cart.findOne({ orderBy: _id }).populate(
+      "products.product"
+    );
+    res.json(cart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const emptyCart = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.user;
+    validateMongoDBId(_id);
+    const user = await User.findOne({ _id });
+    const cart = await Cart.findOneAndDelete({ orderBy: user._id });
+    res.json(cart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   login,
@@ -311,5 +375,8 @@ module.exports = {
   resetPassword,
   loginAdmin,
   getWishlist,
-  saveAddress
+  saveAddress,
+  cart,
+  getCart,
+  emptyCart
 };
