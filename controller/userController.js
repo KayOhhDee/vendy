@@ -1,10 +1,12 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const uniqid = require("uniqid");
 const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const Product = require("../models/productModel");
 const Cart = require("../models/cartModel");
 const Coupon = require("../models/couponModel");
+const Order = require("../models/orderModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDBId = require("../utils/validateMongoDBID");
 const { generateRefreshToken } = require("../config/refreshToken");
@@ -383,6 +385,86 @@ const applyCoupon = asyncHandler(async (req, res) => {
   }
 });
 
+const createOrder = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.user;
+    const { cashOrder, couponApplied } = req.body;
+    validateMongoDBId(_id);
+    if (!cashOrder) throw new Error("Create cash order failed");
+
+    let cart = await Cart.findOne({ orderBy: _id });
+    let finalAmount = 0;
+
+    if (couponApplied && cart.totalAfterDiscount) {
+      finalAmount = cart.totalAfterDiscount;
+    } else {
+      finalAmount = cart.cartTotal;
+    }
+
+    await new Order({
+      products: cart.products,
+      paymentIntent: {
+        id: uniqid(),
+        method: "COD",
+        amount: finalAmount,
+        status: "Cash on Delivery",
+        createdAt: Date.now(),
+        currency: "usd",
+      },
+      orderBy: _id,
+      orderStatus: "Cash on Delivery",
+    }).save();
+
+    let update = cart.products.map((item) => {
+      return {
+        updateOne: {
+          filter: { _id: item.product._id },
+          update: { $inc: { quantity: -item.count, sold: +item.count } },
+        },
+      };
+    });
+    await Product.bulkWrite(update, {});
+
+    res.json({ message: "Success" });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const getOrders = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.user;
+    validateMongoDBId(_id);
+    const orders = await Order.find({ orderBy: _id })
+      .populate("products.product")
+      .exec();
+    res.json(orders);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  try {
+    const { status } = req.body;
+    const { id } = req.params;
+    validateMongoDBId(id);
+    const order = await Order.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          orderStatus: status,
+          "paymentIntent.status": status,
+        },
+      },
+      { new: true }
+    );
+    res.json(order);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   login,
@@ -404,4 +486,7 @@ module.exports = {
   getCart,
   emptyCart,
   applyCoupon,
+  createOrder,
+  getOrders,
+  updateOrderStatus,
 };
